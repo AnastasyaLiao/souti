@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <LinearLayout android:orientation="horizontal"
+        android:layout_width="match_parent" android:layout_height="match_parent">
+
+        <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1">
+            <androidx.camera.view.PreviewView android:id="@+id/preview"
+                android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView android:id="@+id/fz_tl" android:layout_width="32dp" android:layout_height="32dp"
+                android:src="@mipmap/img_gb1" android:visibility="gone" android:importantForAccessibility="no"/>
+            <ImageView android:id="@+id/fz_tr" android:layout_width="32dp" android:layout_height="32dp"
+                android:src="@mipmap/img_gb2" android:visibility="gone" android:importantForAccessibility="no"/>
+            <ImageView android:id="@+id/fz_bl" android:layout_width="32dp" android:layout_height="32dp"
+                android:src="@mipmap/img_gb4" android:visibility="gone" android:importantForAccessibility="no"/>
+            <ImageView android:id="@+id/fz_br" android:layout_width="32dp" android:layout_height="32dp"
+                android:src="@mipmap/img_gb3" android:visibility="gone" android:importantForAccessibility="no"/>
+            <TextView android:id="@+id/tv_tip" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_gravity="bottom" android:layout_marginBottom="14dp" android:gravity="center"
+                android:text="横拍模式，点击画面可对焦将文字对齐参考线，识别更精准"
+                android:textColor="#D9FFFFFF" android:textSize="21dp"/>
+            <TextView android:id="@+id/tv_hint" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center" android:background="#B3000000" android:padding="12dp"
+                android:visibility="gone" android:gravity="center" android:textColor="@color/white" android:textSize="20dp"/>
+        </FrameLayout>
+
+        <LinearLayout android:orientation="vertical" android:layout_width="112dp" android:layout_height="match_parent"
+            android:background="@color/bg" android:gravity="center_horizontal" android:paddingVertical="14dp">
+            <LinearLayout android:id="@+id/slot_book" android:orientation="vertical" android:layout_width="wrap_content"
+                android:layout_height="0dp" android:layout_weight="1" android:gravity="center">
+                <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/shape_pill">
+                    <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center"
+                        android:src="@mipmap/icon_tjiao1" android:importantForAccessibility="no"/>
+                </FrameLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="错题本" android:textColor="@color/white" android:textSize="21dp"/>
+            </LinearLayout>
+            <ImageView android:id="@+id/iv_shutter" android:layout_width="64dp" android:layout_height="64dp"
+                android:src="@mipmap/icon_km" android:importantForAccessibility="no"/>
+            <LinearLayout android:id="@+id/slot_scan" android:orientation="vertical" android:layout_width="wrap_content"
+                android:layout_height="0dp" android:layout_weight="1" android:gravity="center">
+                <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/shape_pill">
+                    <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center"
+                        android:src="@mipmap/icon_pzst" android:importantForAccessibility="no"/>
+                </FrameLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="扫描搜题" android:textColor="@color/white" android:textSize="21dp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 裁剪态：对齐原版 CropImageView + 完成/重拍 右栏 -->
+    <LinearLayout android:id="@+id/ll_crop" android:orientation="horizontal"
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@color/bg" android:visibility="gone">
+        <com.souti.ai.CropView android:id="@+id/crop_view"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+        <LinearLayout android:orientation="vertical" android:layout_width="112dp" android:layout_height="match_parent"
+            android:background="@color/bg" android:paddingVertical="14dp">
+            <LinearLayout android:id="@+id/ll_done" android:orientation="vertical" android:layout_width="match_parent"
+                android:layout_height="0dp" android:layout_weight="1" android:gravity="center">
+                <ImageView android:layout_width="56dp" android:layout_height="56dp" android:src="@mipmap/icon_wc"
+                    android:importantForAccessibility="no"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                    android:text="完成" android:textColor="@color/white" android:textSize="19dp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/ll_retake" android:orientation="vertical" android:layout_width="match_parent"
+                android:layout_height="0dp" android:layout_weight="1" android:gravity="center">
+                <ImageView android:layout_width="56dp" android:layout_height="56dp" android:src="@mipmap/icon_cp"
+                    android:importantForAccessibility="no"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                    android:text="重拍" android:textColor="@color/white" android:textSize="19dp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

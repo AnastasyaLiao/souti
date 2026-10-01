@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="katex.min.css">
+<script src="katex.min.js"></script>
+<script src="auto-render.min.js"></script>
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  /* 横向无限滚动的根因：长串不换行的 token（比如之前那屏 nullnull…）把页面撑到几万像素宽。
+     这里从 body 到气泡一律强制断词，并把横向滚动彻底锁死。 */
+  html, body { max-width:100%; overflow-x:hidden; }
+  body { margin:0; padding:14px; box-sizing:border-box; background:transparent; color:#fff;
+         font-family:"Noto Sans SC",sans-serif; font-size:22px; line-height:1.6;
+         word-break:break-word; word-wrap:break-word; overflow-wrap:break-word; }
+  /* LaTeX 字号与正文一致 */
+  .katex { font-size:1em !important; }
+  h1,h2,h3,h4 { margin:.6em 0 .3em; line-height:1.35; }
+  h1 { font-size:1.35em; } h2 { font-size:1.2em; } h3 { font-size:1.1em; } h4 { font-size:1.02em; }
+  p { margin:.45em 0; }
+  ul,ol { margin:.4em 0; padding-left:1.5em; }
+  li { margin:.2em 0; }
+  blockquote { margin:.5em 0; padding:.2em .8em; border-left:3px solid #3C92E8;
+               background:rgba(255,255,255,.05); }
+  pre { background:rgba(255,255,255,.08); padding:8px; border-radius:6px; overflow-x:auto; }
+  code { font-size:.95em; }
+  a { color:#7FB8FF; }
+  table { border-collapse:collapse; margin:.5em 0; }
+  td,th { border:1px solid rgba(255,255,255,.35); padding:4px 8px; }
+  .katex-display { overflow-x:auto; overflow-y:hidden; }
+  .who { color:#9AA6B8; font-size:16px; margin:10px 0 3px; word-break:break-word; }
+  .bubble { background:#1C2F4F; border-radius:8px; padding:9px 11px; margin:0 0 4px; max-width:88%;
+            box-sizing:border-box; word-break:break-word; word-wrap:break-word; overflow-wrap:break-word; }
+  .me { margin-left:auto; background:#3C92E8; }
+  .me.who { text-align:right; }
+  #c, #chat { max-width:100%; overflow-x:hidden; }
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="chat"></div>
+<script>
+/* 本机 WebView 是 Chrome 61，marked v12 的 ?. / ?? 语法直接报 SyntaxError，
+   所以这里用纯 ES5 自带一个够用的 Markdown 解析器：
+   标题 / 列表 / 引用 / 代码块 / 表格 / 粗斜体 / 行内码 / 链接。
+   先把 $...$ 与 $$...$$ 数学段用占位符保护，避免被星号下划线语法吃掉。 */
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function inline(s) {
+  s = s.replace(/`([^`]+)`/g, function (m, c) { return '<code>' + c + '</code>'; });
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+  return s;
+}
+function table(rows) {
+  function cells(r) {
+    var t = r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|'), o = [], i;
+    for (i = 0; i < t.length; i++) o.push(inline(esc(t[i].replace(/^\s+|\s+$/g, ''))));
+    return o;
+  }
+  function isSep(r) { return /^\s*\|?[\s:|-]+\|?\s*$/.test(r) && r.indexOf('-') >= 0; }
+  var html = '', head = true, i;
+  for (i = 0; i < rows.length; i++) {
+    if (isSep(rows[i])) continue;
+    var cs = cells(rows[i]), tag = head ? 'th' : 'td', j, tr = '';
+    for (j = 0; j < cs.length; j++) tr += '<' + tag + '>' + cs[j] + '</' + tag + '>';
+    html += '<tr>' + tr + '</tr>';
+    head = false;
+  }
+  return '<table>' + html + '</table>';
+}
+function md2html(src) {
+  var store = [];
+  src = String(src).replace(/\r\n/g, '\n')
+    .replace(/\$\$([\s\S]+?)\$\$/g, function (m) { store.push(m); return '@@M' + (store.length - 1) + '@@'; })
+    .replace(/\$([^$\n]+?)\$/g, function (m) { store.push(m); return '@@M' + (store.length - 1) + '@@'; });
+  var lines = src.split('\n'), out = [], para = [], i = 0;
+  function flush() {
+    if (!para.length) return;
+    out.push('<p>' + inline(esc(para.join('\n'))).replace(/\n/g, '<br>') + '</p>');
+    para = [];
+  }
+  /* 收集连续列表项：允许项与项之间夹一个空行（模型常这么写），否则会被拆成多个 <ol> 而全部显示 1. */
+  function collect(re) {
+    var items = [];
+    while (i < lines.length) {
+      if (re.test(lines[i])) { items.push(inline(esc(lines[i].replace(re, '')))); i++; }
+      else if (/^\s*$/.test(lines[i]) && i + 1 < lines.length && re.test(lines[i + 1])) { i++; }
+      else break;
+    }
+    return items;
+  }
+  while (i < lines.length) {
+    var ln = lines[i], m;
+    if (/^```/.test(ln)) {
+      flush(); i++;
+      var buf = [];
+      while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+      i++;
+      out.push('<pre><code>' + esc(buf.join('\n')) + '</code></pre>');
+      continue;
+    }
+    if (/^\s*$/.test(ln)) { flush(); i++; continue; }
+    m = /^(#{1,4})\s+(.*)$/.exec(ln);
+    if (m) { flush(); var lv = m[1].length;
+             out.push('<h' + lv + '>' + inline(esc(m[2])) + '</h' + lv + '>'); i++; continue; }
+    if (/^>\s?/.test(ln)) {
+      flush(); var q = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(lines[i].replace(/^>\s?/, '')); i++; }
+      out.push('<blockquote>' + inline(esc(q.join('\n'))).replace(/\n/g, '<br>') + '</blockquote>');
+      continue;
+    }
+    if (/^\s*[-*+]\s+/.test(ln)) {
+      flush(); var ul = collect(/^\s*[-*+]\s+/), k;
+      for (k = 0; k < ul.length; k++) ul[k] = '<li>' + ul[k] + '</li>';
+      out.push('<ul>' + ul.join('') + '</ul>'); continue;
+    }
+    if (/^\s*\d+[.)]\s+/.test(ln)) {
+      flush(); var ol = collect(/^\s*\d+[.)]\s+/), j;
+      for (j = 0; j < ol.length; j++) ol[j] = '<li>' + ol[j] + '</li>';
+      out.push('<ol>' + ol.join('') + '</ol>'); continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(ln)) {
+      flush(); var rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+      out.push(table(rows)); continue;
+    }
+    para.push(ln); i++;
+  }
+  flush();
+  return out.join('\n').replace(/@@M(\d+)@@/g, function (m, n) { return store[+n]; });
+}
+function typeset(el) {
+  try {
+    renderMathInElement(el, { delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '\\(', right: '\\)', display: true },
+      { left: '$',  right: '$',  display: false }
+    ], ignoredTags: ['script', 'style', 'pre', 'code'] });
+  } catch (e) {}
+}
+function setMain(md) {
+  var el = document.getElementById('c');
+  el.innerHTML = md2html(md);
+  typeset(el);
+}
+/* 流式打字期间只排版不跑 KaTeX：整篇重排公式是这台机器上最贵的一步，
+   每 200ms 全量重排直接把 CPU 顶满。等正文写完再调 setMain 补一次公式。 */
+function setMainLite(md) {
+  var el = document.getElementById('c');
+  el.innerHTML = md2html(md).replace(/\$([^$]*)\$/g, function (m, x) { return x; });
+}
+function addBubble(who, md, me) {
+  var box = document.createElement('div');
+  var w = document.createElement('div');
+  w.className = 'who' + (me ? ' me' : '');
+  w.textContent = who;
+  var b = document.createElement('div');
+  b.className = 'bubble' + (me ? ' me' : '');
+  b.innerHTML = md2html(md);
+  typeset(b);
+  box.appendChild(w); box.appendChild(b);
+  document.getElementById('chat').appendChild(box);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+/* 只换最后一条气泡：聊天每来一个字就整屏重建是 O(n^2)，长对话会越聊越卡。 */
+function setLastBubble(md) {
+  var chat = document.getElementById('chat');
+  var boxes = chat.childNodes;
+  if (!boxes.length) return;
+  var b = boxes[boxes.length - 1].lastChild;
+  b.innerHTML = md2html(md);
+  typeset(b);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function clearChat() { document.getElementById('chat').innerHTML = ''; }
+/*__INJECT__*/
+</script>
+</body>
+</html>

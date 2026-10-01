@@ -1,0 +1,20 @@
+# 构建产物与本机配置
+build/
+.gradle/
+local.properties
+.idea/
+*.iml
+.cxx/
+captures/
+
+# 交付用的 APK 不入库：debug 包里编着付费 AI 服务的 Key，公开等于把账单挂给全网
+*.apk
+
+# 拆包工作区（第三方 App 的原始产物与反编译结果）与真机截图，体积与版权原因都不发布
+/apk/
+/decoded/
+/res_decoded/
+/replica/
+/shots/
+
+.DS_Store

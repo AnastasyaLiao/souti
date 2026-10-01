@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Souti" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+    <style name="Pill">
+        <item name="android:background">@drawable/shape_pill</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">23dp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:gravity">center</item>
+    </style>
+    <style name="TitleText">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">24dp</item>
+    </style>
+</resources>

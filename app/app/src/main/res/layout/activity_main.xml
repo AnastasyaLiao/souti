@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/bg">
+
+    <LinearLayout android:id="@+id/ll_title" android:orientation="horizontal"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:paddingStart="11dp" android:paddingEnd="13dp"
+        android:paddingTop="12dp" android:paddingBottom="12dp">
+        <ImageView android:layout_width="47dp" android:layout_height="36dp"
+            android:src="@mipmap/icon_back" android:scaleType="fitXY" android:importantForAccessibility="no"/>
+        <TextView style="@style/TitleText" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="智能答疑" android:layout_marginStart="31dp"/>
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+        <TextView android:id="@+id/tv_cuotiben" style="@style/Pill"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="  错题本" android:drawableStart="@mipmap/icon_tjiao"/>
+    </LinearLayout>
+
+    <View android:id="@+id/divider" android:layout_width="match_parent" android:layout_height="1dp"
+        android:layout_below="@id/ll_title" android:layout_marginTop="8dp" android:background="@drawable/divider"/>
+
+    <ImageView android:id="@+id/iv_hero" android:layout_width="416dp" android:layout_height="172dp"
+        android:layout_below="@id/divider" android:layout_marginStart="17dp" android:layout_marginTop="54dp"
+        android:src="@mipmap/img_ystl" android:scaleType="fitCenter" android:importantForAccessibility="no"/>
+
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:orientation="vertical" android:layout_below="@id/divider"
+        android:layout_toEndOf="@id/iv_hero" android:layout_marginStart="21dp" android:layout_marginTop="62dp"
+        android:layout_marginEnd="113dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="- 请把笔头放置在文字正中扫描" android:textColor="@color/white" android:textSize="23dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="- 支持换行扫描，请在抬笔后2秒内继续扫描" android:textColor="@color/white" android:textSize="23dp"/>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/ll_paizhao" android:orientation="vertical"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true" android:layout_alignParentBottom="true"
+        android:layout_marginEnd="12dp" android:layout_marginBottom="13dp" android:gravity="center">
+        <FrameLayout android:layout_width="56dp" android:layout_height="56dp" android:background="@drawable/shape_fab">
+            <ImageView android:layout_width="30dp" android:layout_height="27dp" android:layout_gravity="center"
+                android:src="@mipmap/icon_pz" android:importantForAccessibility="no"/>
+        </FrameLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="拍照答疑" android:textColor="@color/white" android:textSize="21dp" android:layout_marginTop="7dp"/>
+    </LinearLayout>
+</RelativeLayout>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:gravity="center_vertical" android:paddingVertical="4dp">
+    <ImageView android:id="@+id/iv_check" android:layout_width="24dp" android:layout_height="24dp"
+        android:src="@mipmap/icon_wx" android:visibility="invisible" android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no"/>
+    <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@drawable/shape_card" android:padding="14dp">
+        <TextView android:id="@+id/tv_q" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#CCFFFFFF" android:textSize="21sp" android:maxLines="2" android:ellipsize="end"/>
+        <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+            <TextView android:id="@+id/tv_time" android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center" android:textColor="@color/gray" android:textSize="20sp"/>
+            <TextView android:id="@+id/tv_subject" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="@color/blue" android:textSize="20sp"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
