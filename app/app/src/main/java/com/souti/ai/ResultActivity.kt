@@ -112,7 +112,12 @@ class ResultActivity : AppCompatActivity() {
         analyzing = false
         findViewById<View>(R.id.tv_ask).alpha = 1f
         if (failed != null) show("识别失败：$failed\n\n请检查网络或 API 额度后重试。")
-        else { if (!userPickedTab) showStem = true; render() }   // 收尾补一次完整公式排版
+        else {
+            if (!userPickedTab) showStem = true
+            render()
+            // 搜过的题一律进历史，跟收不收藏无关；识别不出题干的（空题干）不记
+            HistoryStore.record(this@ResultActivity, QAPair(subject, question, answer))
+        }
         updateFav()
     }
 

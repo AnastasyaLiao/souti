@@ -12,19 +12,27 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-/** 错题本：列表 + 学科筛选 + 管理模式删除。 */
+/** 列表页：错题本（收藏）与搜题历史共用一套界面，靠 intent 的 mode 切数据源。
+ *  两份数据各存各的文件，删除互不影响。 */
 class WrongBookActivity : AppCompatActivity() {
 
     private val items = mutableListOf<Entry>()
     private val selected = mutableSetOf<Long>()
     private var manage = false
     private var filter = "全部"
+    private var history = false
     private lateinit var rv: RecyclerView
     private lateinit var adapter: Adapter
+
+    private fun all() = if (history) HistoryStore.all(this) else WrongBookStore.all(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wrong_book)
+        history = intent.getStringExtra("mode") == "history"
+        findViewById<TextView>(R.id.tv_title).text = if (history) "搜题历史" else "错题本"
+        findViewById<TextView>(R.id.tv_empty).text =
+            if (history) "还没搜过题，去拍一道吧" else "你还没有收藏题目哦，先去收藏吧"
         rv = findViewById(R.id.rv)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = Adapter()
@@ -41,7 +49,8 @@ class WrongBookActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.tv_delete).setOnClickListener {
             if (selected.isEmpty()) { toast("请先选中要删除的题目"); return@setOnClickListener }
-            WrongBookStore.delete(this, selected.toSet())
+            val ids = selected.toSet()
+            if (history) HistoryStore.delete(this, ids) else WrongBookStore.delete(this, ids)
             selected.clear(); refresh()
         }
     }
@@ -50,7 +59,7 @@ class WrongBookActivity : AppCompatActivity() {
 
     private fun chooseFilter() {
         val subjects = mutableListOf("全部")
-        WrongBookStore.all(this).forEach { if (it.subject !in subjects) subjects.add(it.subject) }
+        all().forEach { if (it.subject !in subjects) subjects.add(it.subject) }
         AlertDialog.Builder(this).setItems(subjects.toTypedArray()) { _, i ->
             filter = subjects[i]
             findViewById<TextView>(R.id.tv_filter).text = filter
@@ -60,9 +69,8 @@ class WrongBookActivity : AppCompatActivity() {
 
     private fun refresh() {
         items.clear()
-        val all = WrongBookStore.all(this)
-        // id 就是收藏那一刻的毫秒数：新的排前面，翻错题本不用再滑到底
-        val src = if (filter == "全部") all else all.filter { it.subject == filter }
+        // id 就是那一刻的毫秒数：新的排前面，翻列表不用再滑到底
+        val src = if (filter == "全部") all() else all().filter { it.subject == filter }
         items.addAll(src.sortedByDescending { it.id })
         findViewById<View>(R.id.ll_empty).visibility =
             if (items.isEmpty()) View.VISIBLE else View.GONE

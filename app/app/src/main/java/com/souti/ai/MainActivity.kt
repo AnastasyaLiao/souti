@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 
-/** 首页：智能答疑（拍照答疑入口 + 错题本入口）。 */
+/** 首页：智能答疑（拍照答疑入口 + 搜题历史 + 错题本入口）。 */
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -16,6 +16,9 @@ class MainActivity : AppCompatActivity() {
             // 没网就别让用户白拍一趟：识别要联网，直接挡在门口
             if (!Net.require(this, "拍照搜题")) return@setOnClickListener
             startActivity(Intent(this, PhotoActivity::class.java))
+        }
+        findViewById<android.view.View>(R.id.tv_history).setOnClickListener {
+            startActivity(Intent(this, WrongBookActivity::class.java).putExtra("mode", "history"))
         }
         findViewById<android.view.View>(R.id.tv_cuotiben).setOnClickListener {
             startActivity(Intent(this, WrongBookActivity::class.java))

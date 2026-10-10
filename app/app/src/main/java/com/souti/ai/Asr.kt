@@ -20,8 +20,11 @@ object Asr {
     private const val TAG = "AsrDiag"
     private const val RATE = 16000
     /** 默认走 8738：那是 asr_relay.py 转发到本机 8737 的口子。
-     *  FunASR 服务自己只绑 127.0.0.1（fchat 那边的既定口径），不改它的代码。 */
-    private const val DEFAULT_SERVER = "http://192.168.0.129:8738"
+     *  FunASR 服务自己只绑 127.0.0.1（fchat 那边的既定口径），不改它的代码。
+     *  这个 IP 是 Mac 在路由器上的 DHCP 地址，路由器重新分配过一次就会整条链路失效
+     *  （语音"突然崩了"基本都是这个原因）；换地址不用重打包：
+     *  adb shell run-as com.souti.ai 往 SharedPreferences cfg 写 asr_server 即可。 */
+    private const val DEFAULT_SERVER = "http://192.168.0.104:8738"
 
     fun server(ctx: Context): String =
         ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("asr_server", DEFAULT_SERVER)

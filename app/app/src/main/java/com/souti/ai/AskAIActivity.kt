@@ -19,12 +19,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import com.souti.ai.ChatStore.Msg
 
-/** 问 AI：上下文仅当前这一道题；回复按 Markdown+LaTeX 渲染。 */
+/** 问 AI：上下文仅当前这一道题，且按题干持久化（退出界面/回错题本再进来接着聊）；回复按 Markdown+LaTeX 渲染。 */
 class AskAIActivity : AppCompatActivity() {
 
-    private data class Msg(val role: String, val content: String)
-    private val msgs = mutableListOf<Msg>()
+    private val msgs = mutableListOf<ChatStore.Msg>()
     private lateinit var web: WebView
     private lateinit var et: EditText
     private lateinit var tvSend: TextView
@@ -67,7 +67,16 @@ class AskAIActivity : AppCompatActivity() {
         web.loadDataWithBaseURL(ResultActivity.MARKDOWN_BASE,
             MarkdownRender.template(this), "text/html", "utf-8", null)
 
-        msgs.add(Msg("assistant", "这道题哪里不明白？可以直接问我，也可以长按输入框说话。\n【题干】$question"))
+        // 聊过的题把记录原样摆回来接着聊；开场白只在第一次进来时写进记录，
+        // 否则每进一次就多攒一条，越聊越长、每次请求也越贵
+        val saved = ChatStore.history(this, question)
+        if (saved.isEmpty()) {
+            val greet = Msg("assistant", "这道题哪里不明白？可以直接问我，也可以长按输入框说话。\n【题干】$question")
+            msgs.add(greet)
+            ChatStore.append(this, question, greet.role, greet.content)
+        } else {
+            msgs.addAll(saved)
+        }
         tvSend.setOnClickListener { send() }
         et.setOnEditorActionListener { _, _, _ -> send(); true }
 
@@ -140,7 +149,8 @@ class AskAIActivity : AppCompatActivity() {
                     if (t.isBlank()) toast("没听清，长按再说一遍")
                     else et.setText((et.text.toString() + t).trim())
                 }
-                .onFailure { toast("转文字失败：${it.message}\n检查电脑上 FunASR(8737) 有没有开") }
+                .onFailure { toast("转文字失败：${it.message}\n当前转写地址：${Asr.server(this@AskAIActivity)}\n" +
+                    "先确认电脑上的 FunASR 和转发口开着（start-asr-link.command 会打印该填的地址）") }
             busy = false
             tvSend.alpha = 1f
         }
@@ -184,6 +194,8 @@ class AskAIActivity : AppCompatActivity() {
         if (TopicGuard.offTopic(text)) {
             msgs.add(Msg("user", text))
             msgs.add(Msg("assistant", TopicGuard.REFUSAL))
+            ChatStore.append(this, question, "user", text)
+            ChatStore.append(this, question, "assistant", TopicGuard.REFUSAL)
             renderAll()
             return
         }
@@ -191,13 +203,17 @@ class AskAIActivity : AppCompatActivity() {
         tvSend.alpha = 0.4f
         msgs.add(Msg("user", text))
         msgs.add(Msg("assistant", "思考中…"))
+        ChatStore.append(this, question, "user", text)
         renderAll()
-        val history = msgs.dropLast(2).map { it.role to it.content }
+        // 只把最近 12 条喂给模型：记录是永久留的，越聊越长，全量带上来每轮的 token 都会涨
+        val history = msgs.dropLast(2).takeLast(12).map { it.role to it.content }
         lifecycleScope.launch {
             runCatching {
                 DeepSeekClient.chat(this@AskAIActivity, question, answer, history, text)
-            }.onSuccess { msgs[msgs.size - 1] = Msg("assistant", it) }
-             .onFailure { msgs[msgs.size - 1] = Msg("assistant", "请求失败：${it.message}") }
+            }.onSuccess {
+                msgs[msgs.size - 1] = Msg("assistant", it)
+                ChatStore.append(this@AskAIActivity, question, "assistant", it)
+            }.onFailure { msgs[msgs.size - 1] = Msg("assistant", "请求失败：${it.message}") }
             busy = false; tvSend.alpha = 1f
             renderAll()
         }
