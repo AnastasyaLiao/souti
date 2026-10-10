@@ -8,7 +8,15 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 没登录态就先去账号门：识别与讲解都要走服务器，未登录的界面没有意义
+        if (!Server.loggedIn(this)) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         setContentView(R.layout.activity_main)
+        // 开屏先和服务器对一次账（后台跑，不挡界面）：历史与收藏以服务器那份为准
+        Sync.pullAll(this)
         // 只要用户从任何别的途径（应用列表、通知、桌面其它磁贴）进过一次自己的软件，
         // 就顺手确认桌面「智能答疑」的顶替入口还在——它会被开机时的 nu.nav.bar 抹掉。
         runCatching { LauncherTakeoverService.ensureEnabled(this) }

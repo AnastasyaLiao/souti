@@ -1,12 +1,16 @@
 package com.souti.ai
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 data class Entry(val id: Long, val subject: String, val question: String,
                  val answer: String, val time: String)
@@ -72,12 +76,26 @@ object WrongBookStore {
         if (clean(qa.question).isEmpty()) return false            // 没识别出题目的不收
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date())
         write(ctx, list + Entry(System.currentTimeMillis(), qa.subject, qa.question, qa.answer, time))
+        Sync.fire("收藏") {
+            val resp = JSONObject(Server.postRecord(ctx, "/qa/favorites/", qa.subject, qa.question, qa.answer))
+            val sid = resp.optLong("id", 0L)
+            if (sid > 0L) adoptServerId(ctx, qa.question, sid)
+        }
         return true
+    }
+
+    private fun adoptServerId(ctx: Context, question: String, sid: Long) {
+        val list = all(ctx)
+        val hit = list.indexOfFirst { it.question == question }
+        if (hit < 0 || list[hit].id == sid) return
+        write(ctx, list.mapIndexed { i, e -> if (i == hit) e.copy(id = sid) else e })
     }
 
     @Synchronized
     fun delete(ctx: Context, ids: Set<Long>) {
         write(ctx, all(ctx).filterNot { ids.contains(it.id) })
+        val copy = ids.toList()
+        Sync.fire("删收藏") { Server.postIds(ctx, "/qa/favorites/delete/", copy) }
     }
 
     @Synchronized
@@ -90,6 +108,26 @@ object WrongBookStore {
         val kept = list.filterNot { it.question == question }
         if (kept.size == list.size) return false
         write(ctx, kept)
+        Sync.fire("取消收藏") { Server.removeFavorite(ctx, question) }
         return true
     }
+
+    /** 用服务器那份覆盖本地缓存（只在没有未落地的写请求时被调用，见 Sync.pullAll）。 */
+    suspend fun pull(ctx: Context) {
+        val arr = JSONObject(Server.get(ctx, "/qa/favorites/?limit=300")).getJSONArray("items")
+        val list = ArrayList<Entry>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            list.add(Entry(o.getLong("id"), o.optString("subject", "其他"), o.getString("question"),
+                o.optString("answer"), utcToLocal(o.optString("created_at"))))
+        }
+        withContext(Dispatchers.Main) { write(ctx, list) }
+    }
+
+    private fun utcToLocal(iso: String): String = runCatching {
+        val parsed = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            .apply { timeZone = TimeZone.getTimeZone("UTC") }.parse(iso.take(19))!!
+        Calendar.getInstance().apply { timeInMillis = parsed.time }.time
+    }.map { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(it) }
+        .getOrDefault(iso.take(16).replace('T', ' '))
 }

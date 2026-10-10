@@ -4,7 +4,7 @@
 拍下题目 → 重新打出题面（公式走 LaTeX 排版）→ 分步讲解 → 追问 → 收藏进错题本。
 
 - 包名 `com.souti.ai`，Kotlin + 原生 View，minSdk 21，无第三方图片库、无 DI。
-- AI 侧只有一个依赖：DeepSeek 的 OpenAI 兼容接口（`deepseek-flash`，支持图片输入）。
+- AI 侧不直连模型：识别与追问都经 fchat 后端代理（上游是 DeepSeek 的 OpenAI 兼容接口 `deepseek-flash`，支持图片输入）。
 - 项目页与白话说明：<https://anastasya.top/project/souti>
 
 ## 来源说明（照实写）
@@ -39,26 +39,27 @@ JAVA_HOME=/path/to/jdk-21 ./gradlew assembleDebug
 # 产物：app/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## 配置你自己的 API Key（仓库里不带 Key）
+## 服务器与账号（客户端不持有任何 AI 凭据）
 
-Key **不进版本库**。`app/app/build.gradle` 按这个顺序取，取不到就是空串：
+识别与讲解**不在 App 里直连模型**：都打到 fchat 后端的 `/qa/analyze/` 与 `/qa/chat/`，
+DeepSeek 的 key 只存在服务端的 `ai_config` 表里，提示词也在服务端。所以反编译这个 APK
+拿不到任何凭据，也改不动判题规则。
 
-1. `-PDEEPSEEK_API_KEY=你的Key`
-2. 环境变量 `DEEPSEEK_API_KEY`
-3. 根目录 `local.properties` 里的 `DEEPSEEK_API_KEY`（这个文件被 `.gitignore` 排除，最适合放本机真实 Key）
+- 首次进入要求登录 fchat 账号（`POST /login/`），本地存 access/refresh 双 JWT
+  （`Session.kt`，EncryptedSharedPreferences + Keystore 主密钥）。access 15 分钟，
+  客户端按 `exp` 提前 60 秒用 `/refresh/` 换一对新的（refresh 每次轮换重签、30 天有效），
+  所以**登录一次之后长期免登录**，不存在也不应该有永久令牌。
+- 只有 `QA_SEARCH_ALLOWED_USER_IDS` 里的工号能用（现网 `1,2` = anastasya / puppet）。
+  判定在服务端按不可变的 `user.id` 做，空配置＝谁都不能用（fail-closed）。
+  不在名单里的账号登录时就会被挡在账号门上，不会进到一半才吃 403。
+- 额度闸也在服务端：同账号两次 AI 调用最少隔 8 秒，每日合计上限 200 次，触顶直接 429，
+  而且是在打到上游**之前**拦下——被挡掉的请求一分钱也不花。
+- 搜题历史与错题收藏存在服务端（`qa_search_record` / `qa_favorite` 两张表，按 user_id 归属），
+  设备上的 `history.json` / `wrongbook.json` 降级为缓存：读的时候以服务器为准覆盖，
+  写的时候先落本地再补上传，所以断网也能翻记录。
 
-```properties
-# app/local.properties
-sdk.dir=/Users/you/Library/Android/sdk
-DEEPSEEK_API_KEY=sk-......
-```
-
-空 Key 也能正常构建、正常安装 —— 只是发起请求时会明确提示「未配置 DeepSeek API Key」，
-而不是悄悄用掉别人的额度。已经装上设备后想换 Key，不必重新打包：
-
-```bash
-adb shell run-as com.souti.ai   # 写 SharedPreferences cfg / api_key 即可覆盖包内值
-```
+要给一个新账号开权限：在 fchat 注册好账号，然后把它的 `user.id` 加进服务端配置
+`QA_SEARCH_ALLOWED_USER_IDS`（`server/src/config.py`），重启后端即可。
 
 ## 真机回归脚本
 

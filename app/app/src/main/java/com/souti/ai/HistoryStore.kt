@@ -1,12 +1,17 @@
 package com.souti.ai
 
 import android.content.Context
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /** 搜题历史：拍过并识别出结果的题一律落盘，跟收藏与否无关。
  *
@@ -47,7 +52,8 @@ object HistoryStore {
     }
 
     /** 同一道题再拍一次不新增条目，只留最新的一份解答；id 换成新的毫秒数，
-     *  列表按 id 倒序排，所以再拍过的题会回到最前面。 */
+     *  列表按 id 倒序排，所以再拍过的题会回到最前面。上传成功后把本地临时 id 换成服务器 id，
+     *  之后的删除才发得对号。 */
     @Synchronized
     fun record(ctx: Context, qa: QAPair) {
         if (qa.question.isBlank()) return
@@ -55,10 +61,45 @@ object HistoryStore {
         val list = all(ctx)
         val kept = list.filterNot { it.question == qa.question }
         write(ctx, kept + Entry(System.currentTimeMillis(), qa.subject, qa.question, qa.answer, time))
+        Sync.fire("搜题历史") {
+            val resp = JSONObject(Server.postRecord(ctx, "/qa/history/", qa.subject, qa.question, qa.answer))
+            val sid = resp.optLong("id", 0L)
+            if (sid > 0L) adoptServerId(ctx, qa.question, sid)
+        }
     }
+
+    private fun adoptServerId(ctx: Context, question: String, sid: Long) {
+        val list = all(ctx)
+        val hit = list.indexOfFirst { it.question == question }
+        if (hit < 0 || list[hit].id == sid) return
+        write(ctx, list.mapIndexed { i, e -> if (i == hit) e.copy(id = sid) else e })
+    }
+
+    /** 用服务器那份覆盖本地缓存（只在没有未落地的写请求时被调用，见 Sync.pullAll）。 */
+    suspend fun pull(ctx: Context) {
+        val text = Server.get(ctx, "/qa/history/?limit=300")
+        val arr = JSONObject(text).getJSONArray("items")
+        val list = ArrayList<Entry>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            list.add(Entry(o.getLong("id"), o.optString("subject", "其他"), o.getString("question"),
+                o.optString("answer"), utcToLocal(o.optString("created_at"))))
+        }
+        withContext(Dispatchers.Main) { write(ctx, list) }
+    }
+
+    /** 服务器回的是 UTC 裸时间（无时区标记），显示要换成设备本地时区。 */
+    private fun utcToLocal(iso: String): String = runCatching {
+        val parsed = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            .apply { timeZone = TimeZone.getTimeZone("UTC") }.parse(iso.take(19))!!
+        val cal = Calendar.getInstance().apply { timeInMillis = parsed.time }
+        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(cal.time)
+    }.getOrDefault(iso.take(16).replace('T', ' '))
 
     @Synchronized
     fun delete(ctx: Context, ids: Set<Long>) {
         write(ctx, all(ctx).filterNot { ids.contains(it.id) })
+        val copy = ids.toList()
+        Sync.fire("删历史") { Server.postIds(ctx, "/qa/history/delete/", copy) }
     }
 }

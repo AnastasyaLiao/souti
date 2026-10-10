@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -9,6 +10,9 @@
     <!-- 本机 HAL 只允许一路摄像头：进拍照页时用它端掉占着摄像头的后台进程（normal 权限，装完即生效） -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- 登录态用 EncryptedSharedPreferences（Keystore 主密钥）。该库 minSdk 23，本包仍声明 21：
+         21/22 上创建会抛异常，Session 里已就地退回应用私有 prefs，不会崩、也不会把人锁在登录页外。 -->
+    <uses-sdk tools:overrideLibrary="androidx.security.security_crypto"/>
     <!-- 桌面入口是无障碍服务，别人（nu.nav.bar）一开机就把 enabled_accessibility_services 整条覆盖掉，
          顶替就哑了。声明这两条是为了开机自愈：WRITE_SECURE_SETTINGS 不申请也不会给，
          装完后用 adb pm grant 授权一次，之后每次开机自己把服务写回去。 -->
@@ -28,6 +32,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity android:name=".LoginActivity" android:screenOrientation="sensorLandscape"/>
         <activity android:name=".PhotoActivity" android:screenOrientation="sensorLandscape"/>
         <activity android:name=".ResultActivity" android:screenOrientation="sensorLandscape"/>
         <activity android:name=".WrongBookActivity" android:screenOrientation="sensorLandscape"/>

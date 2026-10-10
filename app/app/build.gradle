@@ -3,24 +3,9 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// DeepSeek Key 一律不进版本库。取值优先级：-PDEEPSEEK_API_KEY > 环境变量 > 根目录 local.properties。
-// 三个来源都没有时得到空串 —— 这是有意的默认值：别人 clone 下来直接构建出来的包不带任何凭据，
-// 装上去会明确提示「未配置 API Key」（见 DeepSeekClient），而不是悄悄用掉站主的余额。
-// local.properties 是 Android Studio 自己维护的文件，天生在 .gitignore 里，本机放真实 Key 最省事。
-def resolveDeepseekKey() {
-    def lp = rootProject.file('local.properties')
-    def fromLocal = null
-    if (lp.exists()) {
-        def p = new Properties()
-        lp.withInputStream { p.load(it) }
-        fromLocal = p.getProperty('DEEPSEEK_API_KEY')
-    }
-    def picked = [project.findProperty('DEEPSEEK_API_KEY'),
-                  System.getenv('DEEPSEEK_API_KEY'),
-                  fromLocal].find { it && it.toString().trim() }
-    // 去掉引号与反斜杠：值要原样拼进 Java 字符串字面量，不能让它把 BuildConfig 撑破
-    return (picked ?: '').toString().trim().replaceAll(/["\\]/, '')
-}
+// AI 凭据彻底不在客户端：识别与追问都走 fchat 服务器的 /qa/analyze/ 与 /qa/chat/，
+// key 只存在服务端的 ai_config 表里。所以这里不再往 BuildConfig 塞任何东西——
+// 以前塞的是"构建时从 local.properties 取"，现在连取都不用取了。
 
 android {
     namespace 'com.souti.ai'
@@ -32,7 +17,6 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
-        buildConfigField "String", "DEEPSEEK_KEY", "\"${resolveDeepseekKey()}\""
     }
 
     buildFeatures { buildConfig true }
@@ -53,6 +37,8 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    // 登录态（access/refresh 两枚 JWT）落盘加密用
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     def camerax = "1.4.2"
     implementation "androidx.camera:camera-core:$camerax"
