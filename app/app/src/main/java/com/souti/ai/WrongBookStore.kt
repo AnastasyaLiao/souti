@@ -1,6 +1,7 @@
 package com.souti.ai
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -115,6 +116,14 @@ object WrongBookStore {
     /** 用服务器那份覆盖本地缓存（只在没有未落地的写请求时被调用，见 Sync.pullAll）。 */
     suspend fun pull(ctx: Context) {
         val arr = JSONObject(Server.get(ctx, "/qa/favorites/?limit=300")).getJSONArray("items")
+        if (arr.length() == 0 && all(ctx).isNotEmpty()) {
+            // 升级迁移：服务器为空而本地有收藏时，本地是要上传的账，不能被覆盖成空
+            all(ctx).forEach { e ->
+                runCatching { Server.postRecord(ctx, "/qa/favorites/", e.subject, e.question, e.answer) }
+                    .onFailure { Log.w("SoutiSync", "迁移一条收藏失败，本地仍保留: ${it.message}") }
+            }
+            return
+        }
         val list = ArrayList<Entry>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)

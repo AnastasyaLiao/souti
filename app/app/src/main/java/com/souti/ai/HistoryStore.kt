@@ -79,6 +79,11 @@ object HistoryStore {
     suspend fun pull(ctx: Context) {
         val text = Server.get(ctx, "/qa/history/?limit=300")
         val arr = JSONObject(text).getJSONArray("items")
+        if (arr.length() == 0 && all(ctx).isNotEmpty()) {
+            // 从 v1 升级上来、服务器还是空的：本地这份是要迁移上去的账，不能被"覆盖"掉
+            migrateUp(ctx, "/qa/history/")
+            return
+        }
         val list = ArrayList<Entry>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
@@ -86,6 +91,14 @@ object HistoryStore {
                 o.optString("answer"), utcToLocal(o.optString("created_at"))))
         }
         withContext(Dispatchers.Main) { write(ctx, list) }
+    }
+
+    /** 把本地已有的条目逐条推给服务器（升级迁移用；服务器按题干去重，重复推不会产生双份）。 */
+    private suspend fun migrateUp(ctx: Context, path: String) {
+        all(ctx).forEach { e ->
+            runCatching { Server.postRecord(ctx, path, e.subject, e.question, e.answer) }
+                .onFailure { Log.w("SoutiSync", "迁移一条失败，本地仍保留: ${it.message}") }
+        }
     }
 
     /** 服务器回的是 UTC 裸时间（无时区标记），显示要换成设备本地时区。 */
