@@ -24,6 +24,9 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (Server.loggedIn(this)) { goMain(); return }
         setContentView(R.layout.activity_login)
+        // 账号门也要自愈桌面入口：覆盖安装会把本包的无障碍注册清掉，
+        // 而升级后的第一次启动恰好就停在这一页，不在这里补一次，桌面磁贴就一直不跳。
+        runCatching { LauncherTakeoverService.ensureEnabled(this) }
 
         etUser = findViewById(R.id.et_user)
         etPass = findViewById(R.id.et_pass)
